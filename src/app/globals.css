@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fdf6ff;
+  --foreground: #3b2350;
+
+  --color-guma-purple: #8a5cf6;
+  --color-guma-purple-dark: #5b3a8c;
+  --color-guma-purple-light: #efe3ff;
+  --color-guma-yellow: #ffcf56;
+  --color-guma-yellow-dark: #f5a623;
+  --color-guma-cream: #fff8ec;
+  --color-guma-leaf: #7bc67e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-guma-purple: var(--color-guma-purple);
+  --color-guma-purple-dark: var(--color-guma-purple-dark);
+  --color-guma-purple-light: var(--color-guma-purple-light);
+  --color-guma-yellow: var(--color-guma-yellow);
+  --color-guma-yellow-dark: var(--color-guma-yellow-dark);
+  --color-guma-cream: var(--color-guma-cream);
+  --color-guma-leaf: var(--color-guma-leaf);
+  --font-sans: var(--font-jua), var(--font-geist-sans), sans-serif;
+}
+
+body {
+  background: linear-gradient(180deg, #fdf6ff 0%, #fff8ec 100%);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Sweet potato mascot motion graphics */
+.guma-mascot {
+  overflow: visible;
+}
+
+.guma-animated .guma-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: guma-float 3.4s ease-in-out infinite;
+}
+
+.guma-animated .guma-leaf {
+  transform-box: fill-box;
+  animation: guma-leaf-sway 2.6s ease-in-out infinite;
+}
+
+.guma-animated .guma-leaf-left {
+  transform-origin: 100% 100%;
+}
+
+.guma-animated .guma-leaf-right {
+  transform-origin: 0% 100%;
+  animation-delay: -1.3s;
+  animation-direction: reverse;
+}
+
+.guma-animated .guma-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: guma-blink 4.2s ease-in-out infinite;
+}
+
+.guma-animated .guma-cheek {
+  animation: guma-cheek-pulse 3s ease-in-out infinite alternate;
+}
+
+.guma-animated:hover .guma-body {
+  animation-duration: 0.6s;
+}
+
+.guma-animated:hover .guma-leaf {
+  animation-duration: 0.5s;
+}
+
+@keyframes guma-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-1.2deg);
+  }
+}
+
+@keyframes guma-leaf-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes guma-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes guma-cheek-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guma-animated .guma-body,
+  .guma-animated .guma-leaf,
+  .guma-animated .guma-eye,
+  .guma-animated .guma-cheek {
+    animation: none;
+  }
+}
