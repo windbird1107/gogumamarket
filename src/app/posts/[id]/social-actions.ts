@@ -35,6 +35,7 @@ export type CommentFormState = { error: string } | undefined;
 
 export async function createComment(
   postId: number,
+  parentId: number | null,
   _prevState: CommentFormState,
   formData: FormData
 ): Promise<CommentFormState> {
@@ -54,10 +55,24 @@ export async function createComment(
     return { error: "댓글은 500자까지 작성할 수 있어요." };
   }
 
+  // 답글이면, 부모 댓글이 같은 글의 최상위 댓글인지 확인 (답글의 답글 방지)
+  if (parentId != null) {
+    const { data: parent } = await supabase
+      .from("comments")
+      .select("id, post_id, parent_id")
+      .eq("id", parentId)
+      .maybeSingle();
+
+    if (!parent || parent.post_id !== postId || parent.parent_id != null) {
+      return { error: "답글을 달 수 없는 댓글이에요." };
+    }
+  }
+
   const { error } = await supabase.from("comments").insert({
     post_id: postId,
     user_id: user.id,
     content,
+    parent_id: parentId,
   });
 
   if (error) {

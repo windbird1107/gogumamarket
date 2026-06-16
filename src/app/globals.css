@@ -23,7 +23,7 @@
   --color-guma-yellow-dark: var(--color-guma-yellow-dark);
   --color-guma-cream: var(--color-guma-cream);
   --color-guma-leaf: var(--color-guma-leaf);
-  --font-sans: var(--font-jua), var(--font-geist-sans), sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, var(--font-geist-sans), system-ui, sans-serif;
 }
 
 body {
