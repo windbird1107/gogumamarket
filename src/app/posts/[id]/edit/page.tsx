@@ -20,7 +20,7 @@ export default async function EditPostPage({
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, description, price, category, user_id")
+    .select("id, title, description, price, category, user_id, image_urls")
     .eq("id", id)
     .single();
 
@@ -45,6 +45,7 @@ export default async function EditPostPage({
           defaultCategory={post.category}
           defaultPrice={Number(post.price)}
           defaultDescription={post.description}
+          defaultImageUrls={(post.image_urls as string[]) ?? []}
         />
       </div>
     </div>

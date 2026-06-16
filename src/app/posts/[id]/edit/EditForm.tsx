@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef } from "react";
+import Image from "next/image";
 import { CATEGORIES } from "@/lib/categories";
 import { updatePost } from "../actions";
+
+const MAX_IMAGES = 5;
 
 type Props = {
   postId: number;
@@ -10,6 +13,7 @@ type Props = {
   defaultCategory: string;
   defaultPrice: number;
   defaultDescription: string;
+  defaultImageUrls: string[];
 };
 
 export default function EditForm({
@@ -18,10 +22,43 @@ export default function EditForm({
   defaultCategory,
   defaultPrice,
   defaultDescription,
+  defaultImageUrls,
 }: Props) {
   const updatePostWithId = updatePost.bind(null, postId);
   const [state, formAction, pending] = useActionState(updatePostWithId, undefined);
   const [isFree, setIsFree] = useState(defaultPrice === 0);
+  const [keepUrls, setKeepUrls] = useState<string[]>(defaultImageUrls);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newPreviews, setNewPreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const totalCount = keepUrls.length + newFiles.length;
+
+  const removeExisting = (url: string) => {
+    setKeepUrls((prev) => prev.filter((u) => u !== url));
+  };
+
+  const handleNewFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    const combined = [...newFiles, ...selected].slice(0, MAX_IMAGES - keepUrls.length);
+    newPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setNewFiles(combined);
+    setNewPreviews(combined.map((f) => URL.createObjectURL(f)));
+    const dt = new DataTransfer();
+    combined.forEach((f) => dt.items.add(f));
+    if (fileInputRef.current) fileInputRef.current.files = dt.files;
+  };
+
+  const removeNew = (index: number) => {
+    URL.revokeObjectURL(newPreviews[index]);
+    const updatedFiles = newFiles.filter((_, i) => i !== index);
+    const updatedPreviews = newPreviews.filter((_, i) => i !== index);
+    setNewFiles(updatedFiles);
+    setNewPreviews(updatedPreviews);
+    const dt = new DataTransfer();
+    updatedFiles.forEach((f) => dt.items.add(f));
+    if (fileInputRef.current) fileInputRef.current.files = dt.files;
+  };
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-4">
@@ -106,6 +143,82 @@ export default function EditForm({
           className="resize-none rounded-xl border border-guma-purple-light bg-white px-4 py-2.5 outline-none focus:border-guma-purple"
           placeholder="물건 상태, 거래 방법 등을 자세히 적어주세요"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-bold text-guma-purple-dark">
+            사진 <span className="font-normal text-guma-purple-dark/60">(최대 {MAX_IMAGES}장)</span>
+          </label>
+          <span className="text-xs text-guma-purple-dark/50">{totalCount}/{MAX_IMAGES}</span>
+        </div>
+
+        {/* 기존 이미지를 유지하기 위한 hidden input */}
+        {keepUrls.map((url) => (
+          <input key={url} type="hidden" name="keepImageUrl" value={url} />
+        ))}
+
+        {/* 새 이미지 파일 input */}
+        <input
+          ref={fileInputRef}
+          name="newImages"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleNewFiles}
+          className="hidden"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          {/* 기존 이미지 */}
+          {keepUrls.map((url, i) => (
+            <div key={url} className="relative h-20 w-20 shrink-0">
+              <Image
+                src={url}
+                alt={`기존 사진 ${i + 1}`}
+                fill
+                className="rounded-xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeExisting(url)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-guma-purple-dark text-white text-xs leading-none"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+
+          {/* 새로 추가한 이미지 */}
+          {newPreviews.map((url, i) => (
+            <div key={url} className="relative h-20 w-20 shrink-0">
+              <Image
+                src={url}
+                alt={`새 사진 ${i + 1}`}
+                fill
+                className="rounded-xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeNew(i)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-guma-purple-dark text-white text-xs leading-none"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+
+          {totalCount < MAX_IMAGES && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-guma-purple-light text-guma-purple-dark/50 transition hover:border-guma-purple hover:text-guma-purple"
+            >
+              <span className="text-2xl leading-none">+</span>
+              <span className="text-xs">사진 추가</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {state?.error && (

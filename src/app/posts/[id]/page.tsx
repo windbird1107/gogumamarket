@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { deletePost } from "./actions";
@@ -17,7 +18,7 @@ export default async function PostDetailPage({
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, description, price, category, status, created_at, user_id, profiles(nickname)")
+    .select("id, title, description, price, category, status, created_at, user_id, image_urls, profiles(nickname)")
     .eq("id", id)
     .single();
 
@@ -28,6 +29,7 @@ export default async function PostDetailPage({
   const isFree = Number(post.price) === 0;
   const seller = post.profiles as unknown as { nickname: string } | null;
   const isOwner = user?.id === post.user_id;
+  const imageUrls: string[] = (post.image_urls as string[]) ?? [];
 
   return (
     <div className="flex flex-1 flex-col items-center px-4 py-10">
@@ -35,6 +37,23 @@ export default async function PostDetailPage({
         <Link href="/" className="text-sm text-guma-purple-dark/60 hover:underline">
           ← 목록으로
         </Link>
+
+        {/* 이미지 갤러리 */}
+        {imageUrls.length > 0 && (
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {imageUrls.map((url, i) => (
+              <div key={i} className="relative h-52 w-52 shrink-0 overflow-hidden rounded-2xl">
+                <Image
+                  src={url}
+                  alt={`상품 사진 ${i + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="208px"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 flex items-center gap-2">
           <span className="rounded-full bg-guma-purple-light px-2 py-0.5 text-xs font-bold text-guma-purple-dark">

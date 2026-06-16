@@ -1,12 +1,37 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef } from "react";
+import Image from "next/image";
 import { CATEGORIES } from "@/lib/categories";
 import { createPost } from "./actions";
+
+const MAX_IMAGES = 5;
 
 export default function SellForm() {
   const [state, formAction, pending] = useActionState(createPost, undefined);
   const [isFree, setIsFree] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files ?? []);
+    const combined = [...selectedFiles, ...newFiles].slice(0, MAX_IMAGES);
+    updateFiles(combined);
+  };
+
+  const updateFiles = (files: File[]) => {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles(files);
+    setPreviewUrls(files.map((f) => URL.createObjectURL(f)));
+    const dt = new DataTransfer();
+    files.forEach((f) => dt.items.add(f));
+    if (fileInputRef.current) fileInputRef.current.files = dt.files;
+  };
+
+  const removeFile = (index: number) => {
+    updateFiles(selectedFiles.filter((_, i) => i !== index));
+  };
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-4">
@@ -88,6 +113,56 @@ export default function SellForm() {
           className="resize-none rounded-xl border border-guma-purple-light bg-white px-4 py-2.5 outline-none focus:border-guma-purple"
           placeholder="물건 상태, 거래 방법 등을 자세히 적어주세요"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-bold text-guma-purple-dark">
+            사진 <span className="font-normal text-guma-purple-dark/60">(최대 {MAX_IMAGES}장)</span>
+          </label>
+          <span className="text-xs text-guma-purple-dark/50">{selectedFiles.length}/{MAX_IMAGES}</span>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          name="images"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFilesChange}
+          className="hidden"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          {previewUrls.map((url, i) => (
+            <div key={i} className="relative h-20 w-20 shrink-0">
+              <Image
+                src={url}
+                alt={`사진 ${i + 1}`}
+                fill
+                className="rounded-xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeFile(i)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-guma-purple-dark text-white text-xs leading-none"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+
+          {selectedFiles.length < MAX_IMAGES && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-guma-purple-light text-guma-purple-dark/50 transition hover:border-guma-purple hover:text-guma-purple"
+            >
+              <span className="text-2xl leading-none">+</span>
+              <span className="text-xs">사진 추가</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {state?.error && (

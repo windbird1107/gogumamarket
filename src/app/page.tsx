@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import SweetPotatoMascot from "@/components/SweetPotatoMascot";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +15,7 @@ export default async function Home({
 
   const { data: posts } = await supabase
     .from("posts")
-    .select("id, title, price, category, status, created_at, profiles(nickname)")
+    .select("id, title, price, category, status, created_at, image_urls, profiles(nickname)")
     .order("created_at", { ascending: false });
 
   return (
@@ -75,29 +76,49 @@ export default async function Home({
             {posts.map((post) => {
               const isFree = Number(post.price) === 0;
               const seller = post.profiles as unknown as { nickname: string } | null;
+              const imageUrls: string[] = (post.image_urls as string[]) ?? [];
+              const thumbnail = imageUrls[0];
               return (
                 <li key={post.id}>
                   <Link
                     href={`/posts/${post.id}`}
-                    className="block rounded-2xl bg-white p-4 shadow-sm transition hover:shadow-md"
+                    className="flex gap-3 rounded-2xl bg-white p-4 shadow-sm transition hover:shadow-md"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="rounded-full bg-guma-purple-light px-2 py-0.5 text-xs font-bold text-guma-purple-dark">
-                        {post.category}
-                      </span>
-                      <span className="text-xs text-guma-purple-dark/50">
-                        {new Date(post.created_at).toLocaleDateString("ko-KR")}
-                      </span>
+                    {thumbnail ? (
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+                        <Image
+                          src={thumbnail}
+                          alt={post.title}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-guma-purple-light/40 text-3xl">
+                        🍠
+                      </div>
+                    )}
+
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-guma-purple-light px-2 py-0.5 text-xs font-bold text-guma-purple-dark">
+                          {post.category}
+                        </span>
+                        <span className="text-xs text-guma-purple-dark/50">
+                          {new Date(post.created_at).toLocaleDateString("ko-KR")}
+                        </span>
+                      </div>
+                      <h3 className="mt-1 truncate font-bold text-guma-purple-dark">
+                        {post.title}
+                      </h3>
+                      <p className="mt-0.5 font-bold text-guma-purple-dark">
+                        {isFree ? "나눔" : `${Number(post.price).toLocaleString()}원`}
+                      </p>
+                      <p className="mt-0.5 text-xs text-guma-purple-dark/60">
+                        {seller?.nickname ?? "알 수 없음"}
+                      </p>
                     </div>
-                    <h3 className="mt-2 truncate font-bold text-guma-purple-dark">
-                      {post.title}
-                    </h3>
-                    <p className="mt-1 font-bold text-guma-purple-dark">
-                      {isFree ? "나눔" : `${Number(post.price).toLocaleString()}원`}
-                    </p>
-                    <p className="mt-1 text-xs text-guma-purple-dark/60">
-                      {seller?.nickname ?? "알 수 없음"}
-                    </p>
                   </Link>
                 </li>
               );
