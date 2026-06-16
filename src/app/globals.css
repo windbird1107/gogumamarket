@@ -117,11 +117,37 @@ body {
   }
 }
 
+/* Dancing mascots for the hero section */
+.guma-dancer {
+  display: inline-block;
+  transform-origin: bottom center;
+  animation: guma-dance 1.05s ease-in-out infinite;
+}
+
+@keyframes guma-dance {
+  0% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  25% {
+    transform: translateY(-12px) rotate(6deg);
+  }
+  50% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  75% {
+    transform: translateY(-12px) rotate(6deg);
+  }
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guma-animated .guma-body,
   .guma-animated .guma-leaf,
   .guma-animated .guma-eye,
-  .guma-animated .guma-cheek {
+  .guma-animated .guma-cheek,
+  .guma-dancer {
     animation: none;
   }
 }

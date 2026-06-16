@@ -1,9 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import Avatar from "@/components/Avatar";
 import { createClient } from "@/lib/supabase/server";
 import { deletePost } from "./actions";
+import { deleteComment } from "./social-actions";
 import DeleteButton from "./DeleteButton";
+import LikeButton from "./LikeButton";
+import CommentForm from "./CommentForm";
+import SendMessageButton from "./SendMessageButton";
 
 export default async function PostDetailPage({
   params,
@@ -18,7 +23,7 @@ export default async function PostDetailPage({
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, description, price, category, status, created_at, user_id, image_urls, profiles(nickname)")
+    .select("id, title, description, price, category, status, created_at, user_id, image_urls, profiles(nickname, avatar_url)")
     .eq("id", id)
     .single();
 
@@ -26,10 +31,25 @@ export default async function PostDetailPage({
     notFound();
   }
 
+  // 좋아요 개수 + 내가 눌렀는지, 댓글 목록을 함께 조회
+  const [{ count: likeCount }, myLikeResult, { data: comments }] = await Promise.all([
+    supabase.from("likes").select("id", { count: "exact", head: true }).eq("post_id", id),
+    user
+      ? supabase.from("likes").select("id").eq("post_id", id).eq("user_id", user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("comments")
+      .select("id, content, created_at, user_id, profiles(nickname, avatar_url)")
+      .eq("post_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+
   const isFree = Number(post.price) === 0;
-  const seller = post.profiles as unknown as { nickname: string } | null;
+  const seller = post.profiles as unknown as { nickname: string; avatar_url: string | null } | null;
   const isOwner = user?.id === post.user_id;
   const imageUrls: string[] = (post.image_urls as string[]) ?? [];
+  const liked = Boolean(myLikeResult.data);
+  const commentList = comments ?? [];
 
   return (
     <div className="flex flex-1 flex-col items-center px-4 py-10">
@@ -70,17 +90,30 @@ export default async function PostDetailPage({
           {isFree ? "나눔" : `${Number(post.price).toLocaleString()}원`}
         </p>
 
-        <p className="mt-1 text-sm text-guma-purple-dark/60">
-          {seller?.nickname ?? "알 수 없음"} ·{" "}
-          {new Date(post.created_at).toLocaleDateString("ko-KR")}
-        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <Avatar src={seller?.avatar_url} nickname={seller?.nickname} size={28} />
+          <p className="text-sm text-guma-purple-dark/60">
+            {seller?.nickname ?? "알 수 없음"} ·{" "}
+            {new Date(post.created_at).toLocaleDateString("ko-KR")}
+          </p>
+        </div>
 
         <p className="mt-4 whitespace-pre-wrap text-guma-purple-dark/80">
           {post.description}
         </p>
 
+        {/* 좋아요 버튼 */}
+        <div className="mt-6">
+          <LikeButton
+            postId={post.id}
+            initialLiked={liked}
+            initialCount={likeCount ?? 0}
+            isLoggedIn={Boolean(user)}
+          />
+        </div>
+
         {isOwner && (
-          <div className="mt-6 flex gap-2">
+          <div className="mt-4 flex gap-2">
             <Link
               href={`/posts/${post.id}/edit`}
               className="rounded-full border border-guma-purple px-4 py-2 text-sm font-bold text-guma-purple-dark transition hover:bg-guma-purple-light"
@@ -93,6 +126,83 @@ export default async function PostDetailPage({
             </form>
           </div>
         )}
+
+        {/* 댓글 영역 */}
+        <div className="mt-8 border-t border-guma-purple-light pt-6">
+          <h2 className="mb-3 text-lg font-bold text-guma-purple-dark">
+            댓글 {commentList.length}
+          </h2>
+
+          {user ? (
+            <CommentForm postId={post.id} />
+          ) : (
+            <p className="rounded-xl bg-guma-purple-light/30 px-4 py-3 text-sm text-guma-purple-dark/70">
+              댓글을 작성하려면{" "}
+              <Link href="/login" className="font-bold underline">
+                로그인
+              </Link>
+              이 필요해요.
+            </p>
+          )}
+
+          <ul className="mt-4 flex flex-col gap-3">
+            {commentList.length === 0 ? (
+              <li className="py-4 text-center text-sm text-guma-purple-dark/50">
+                아직 댓글이 없어요. 첫 댓글을 남겨보세요!
+              </li>
+            ) : (
+              commentList.map((comment) => {
+                const writer = comment.profiles as unknown as { nickname: string; avatar_url: string | null } | null;
+                const isMine = user?.id === comment.user_id;
+                return (
+                  <li
+                    key={comment.id}
+                    className="rounded-xl bg-guma-purple-light/20 px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar src={writer?.avatar_url} nickname={writer?.nickname} size={24} />
+                        <span className="text-sm font-bold text-guma-purple-dark">
+                          {writer?.nickname ?? "알 수 없음"}
+                        </span>
+                      </div>
+                      <span className="text-xs text-guma-purple-dark/50">
+                        {new Date(comment.created_at).toLocaleDateString("ko-KR")}
+                      </span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-guma-purple-dark/80">
+                      {comment.content}
+                    </p>
+
+                    {/* 판매자는 댓글 단 구매 희망자에게 쪽지 보내기 가능 (본인 댓글 제외) */}
+                    {isOwner && comment.user_id !== post.user_id && (
+                      <div className="mt-2">
+                        <SendMessageButton
+                          postId={post.id}
+                          receiverId={comment.user_id}
+                          receiverNickname={writer?.nickname ?? "구매 희망자"}
+                        />
+                      </div>
+                    )}
+
+                    {isMine && (
+                      <form action={deleteComment} className="mt-1 text-right">
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <input type="hidden" name="postId" value={post.id} />
+                        <button
+                          type="submit"
+                          className="text-xs text-guma-purple-dark/50 hover:text-red-500 hover:underline"
+                        >
+                          삭제
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
       </div>
     </div>
   );
